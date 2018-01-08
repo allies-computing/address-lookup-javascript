@@ -117,7 +117,7 @@
                     // Country hard coded to GB for this example
                     var country_code = "GB";
 
-                    // Create the URL to API including API key and encoded mobile address
+                    // Create the URL to API including API key and encoded search term
                     var address_url = "https://ws.postcoder.com/pcw/" + api_key + "/address/"+country_code+"/" + encodeURIComponent(address) + "?lines=2&page=" + page;
 
                     // Call the API
@@ -130,7 +130,8 @@
                             loading_html.remove();
 
                             var data = JSON.parse(address_request.responseText);
-                        
+                            
+                            // For only one result, simply populate the fields, rather than asking the user to select from list
                             if (data.length == 1) {
 
                                 select_address(data[0], address_results, status_element);
