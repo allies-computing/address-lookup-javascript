@@ -114,6 +114,8 @@
     </div>
 
     <script>
+      // This script will present address results in a <select> element.
+
       // Replace with your API key, test key is locked to NR14 7PZ postcode search
       var api_key = "PCW45-12345-12345-1234X";
 
@@ -276,7 +278,7 @@
               address_results.textContent = "Error occurred";
 
               // Triggered if API does not return HTTP code between 200 and 399
-              // More info - https://developers.alliescomputing.com/postcoder-web-api/error-handling
+              // More info - https://postcoder.com/docs/error-handling
             }
           };
 
@@ -288,7 +290,7 @@
             address_results.textContent = "Error occurred";
 
             // Triggered if API cannot be reached
-            // More info - https://developers.alliescomputing.com/postcoder-web-api/error-handling
+            // More info - https://postcoder.com/docs/error-handling
           };
 
           address_request.send();
@@ -315,5 +317,256 @@
         // https://postcoder.com/docs/address-lookup
       }
     </script>
+
+    <!--
+
+    If you would prefer the address results to appear in a radio button list, you can comment out the above script element and uncomment out this one. You can read more on this topic here: https://www.alliescomputing.com/support/postcode-lookup-ux
+
+    -->
+
+    <!--
+
+    <script>
+      // This script will present address results as radio buttons.
+      
+      // Replace with your API key, test key is locked to NR14 7PZ postcode search
+      var api_key = "PCW45-12345-12345-1234X";
+
+      var example_form = document.getElementById("example_form");
+
+      example_form.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        // The field we will use for search term input
+        var address = document.getElementById("address");
+
+        // Where we will put our search results
+        var address_results = document.getElementById("address_results");
+
+        // Accessible status messages for assisted technologies like screen readers
+        var address_status = document.getElementById("address_status");
+
+        address_search(address, address_results, address_status);
+      });
+
+      function address_search(
+        input_element,
+        address_results,
+        status_element,
+        page
+      ) {
+        var page = page || 0;
+
+        var address = input_element.value.trim();
+
+        if (address != "") {
+          // Remove any previous validation results
+          if (page == 0) address_results.innerHTML = "";
+
+          // Create a loading message
+          var loading_html = document.createElement("div");
+          loading_html.setAttribute("id", "address_loading");
+          loading_html.textContent = "Searching addresses...";
+
+          input_element.insertAdjacentElement("afterend", loading_html);
+
+          status_element.textContent = "Searching addresses";
+
+          // Country hard coded to GB for this example
+          var country_code = "GB";
+
+          // Create the URL to API including API key and encoded search term
+          var address_url =
+            "https://ws.postcoder.com/pcw/" +
+            api_key +
+            "/address/" +
+            country_code +
+            "/" +
+            encodeURIComponent(address) +
+            "?lines=2&page=" +
+            page;
+
+          // Call the API
+          var address_request = new XMLHttpRequest();
+          address_request.open("GET", address_url, true);
+
+          address_request.onload = function() {
+            if (address_request.status >= 200 && address_request.status < 400) {
+              loading_html.remove();
+
+              var data = JSON.parse(address_request.responseText);
+
+              // For only one result, simply populate the fields, rather than asking the user to select from list
+              if (data.length == 1) {
+                select_address(data[0], address_results, status_element);
+
+                status_element.textContent =
+                  '"' +
+                  data[0].summaryline +
+                  '" selected, address fields below populated';
+              } else if (data.length > 1) {
+                for (var i = 0; i < data.length; i++) {
+                  var address_option = document.createElement("div");
+                  address_option.className = "radio";
+
+                  address_option.onclick = (function(item) {
+                    return function(e) {
+                      // Only trigger if it's a click with the mouse, not caused by using arrow keys
+                      if (
+                        e.type === "click" &&
+                        e.offsetX !== 0 &&
+                        e.offsetY !== 0
+                      ) {
+                        e.preventDefault();
+                        select_address(item, address_results, status_element);
+                      }
+                    };
+                  })(data[i]);
+
+                  address_option.onkeydown = (function(item) {
+                    return function(e) {
+                      // When using the keyboard, on return/enter select the item
+                      var code = e.keyCode || e.which;
+                      if (code == 13) {
+                        e.preventDefault();
+                        select_address(item, address_results, status_element);
+                      }
+                    };
+                  })(data[i]);
+
+                  var address_option_label = document.createElement("label");
+                  address_option_label.textContent = data[i].summaryline;
+
+                  var address_option_radio = document.createElement("input");
+                  address_option_radio.setAttribute("type", "radio");
+                  address_option_radio.setAttribute("name", "address_radio");
+                  address_option_radio.setAttribute(
+                    "id",
+                    "address_" + page + "_" + i
+                  );
+                  address_option_radio.value = page + "_" + i;
+
+                  // Insert radio into label, at start
+                  address_option_label.insertAdjacentElement(
+                    "afterbegin",
+                    address_option_radio
+                  );
+
+                  // Insert label into option div, at end
+                  address_option.insertAdjacentElement(
+                    "beforeend",
+                    address_option_label
+                  );
+
+                  // Insert option div into output_element, at end
+                  address_results.insertAdjacentElement(
+                    "beforeend",
+                    address_option
+                  );
+                }
+
+                // Check if we have more than one page of results (Slight edge case)
+                // Either let your user page through the results using button or
+                // show a message to encourage them to refine their search.
+                // Typically adding a house number or name along with postcode helps
+
+                var last_index = data.length - 1;
+
+                try {
+                  // Remove existing more button, if exists
+                  document.getElementById("show_more_button").remove();
+                } catch (e) {}
+
+                if (data[last_index].morevalues) {
+                  // Create the more button and add some context to text, using totalresutls element
+                  var show_more_button = document.createElement("button");
+                  show_more_button.textContent =
+                    data[last_index].totalresults +
+                    " addresses found, click to show next 100";
+                  show_more_button.setAttribute("id", "show_more_button");
+
+                  // Bind a click to the button which will pass the nextpage element through
+                  show_more_button.onclick = (function(last_item) {
+                    return function(e) {
+                      e.preventDefault();
+                      address_search(
+                        input_element,
+                        address_results,
+                        status_element,
+                        last_item.nextpage
+                      );
+                    };
+                  })(data[last_index]);
+
+                  // Insert button at end of existing results
+                  address_results.insertAdjacentElement(
+                    "beforeend",
+                    show_more_button
+                  );
+
+                  // Accessible status message to say more than 100 addresses
+                  status_element.textContent =
+                    data[last_index].totalresults +
+                    " addresses found, showing 100 per page. This is page " +
+                    (parseInt(page) + 1) +
+                    ". Use tab to reach next page button, after address results.";
+                } else {
+                  status_element.textContent = data.length + " addresses found";
+                }
+              } else {
+                address_results.textContent = "No addresses found";
+
+                status_element.textContent = "No addresses found";
+              }
+            } else {
+              loading_html.remove();
+
+              status_element.textContent = "Error occurred";
+
+              address_results.textContent = "Error occurred";
+
+              // Triggered if API does not return HTTP code between 200 and 399
+              // More info - https://postcoder.com/docs/error-handling
+            }
+          };
+
+          address_request.onerror = function() {
+            loading_html.remove();
+
+            status_element.textContent = "Error occurred";
+
+            address_results.textContent = "Error occurred";
+
+            // Triggered if API cannot be reached
+            // More info - https://postcoder.com/docs/error-handling
+          };
+
+          address_request.send();
+        } else {
+          // Could show an "Address search term is required" message here
+        }
+      }
+
+      function select_address(address, address_results, status_element) {
+        address_results.innerHTML = "";
+
+        status_element.textContent =
+          '"' +
+          address.summaryline +
+          '" selected, address fields below populated';
+
+        // Populate fields
+        document.getElementById("address_line_1").value =
+          address.addressline1 || "";
+        document.getElementById("address_line_2").value =
+          address.addressline2 || "";
+        document.getElementById("posttown").value = address.posttown || "";
+        document.getElementById("postcode").value = address.postcode || "";
+
+        // Full list of response elements
+        // https://postcoder.com/docs/address-lookup
+      }
+    </script>
+    -->
   </body>
 </html>
