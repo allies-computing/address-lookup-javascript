@@ -39,6 +39,27 @@
       <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
       <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
+    <script>
+      // ChildNode.remove() polyfill for IE
+      (function(arr) {
+        arr.forEach(function(item) {
+          if (item.hasOwnProperty("remove")) {
+            return;
+          }
+          Object.defineProperty(item, "remove", {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: function remove() {
+              if (this.parentNode === null) {
+                return;
+              }
+              this.parentNode.removeChild(this);
+            },
+          });
+        });
+      })([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
+    </script>
   </head>
   <body>
     <div class="row">
